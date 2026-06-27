@@ -358,141 +358,36 @@ WATCHTOWER_INTERVAL=300
 
 ## 7. Phase-by-Phase Development Lifecycle
 
-Each phase must be completed and tested before progressing to the next.
+Each phase must be completed and tested before progressing to the next. Detailed step-by-step instructions, file changes, and test requirements are in each phase file.
 
-### Phase 1: Foundation & Environment Bootstrapping
-1. Scaffold app: `mix phx.new shopping_list --database sqlite3 --binary-id`
-2. Install lefthook (`brew install lefthook`) and configure pre-commit hooks (`lefthook.yml`)
-3. Run `lefthook install` to register the git hook
-4. Configure SQLite WAL mode in `config/runtime.exs`
-5. Install Tailwind CSS v4 and DaisyUI v5 in `assets/`
-6. Create items migration with full schema (id, name, quantity, is_completed, sort_order, timestamps)
-7. Generate Item schema and changeset with validations (name: 1-200 chars, quantity: positive integer)
-- **Verification**: `mix test` confirms compilation and basic schema tests pass; pre-commit hook blocks on failures
-
-### Phase 2: Context, API & Real-Time Sync
-1. Implement `ShoppingList.List` context with all CRUD operations, reorder, and clear
-2. Create REST API controllers for `/api/items` endpoints (GET, POST, PUT, DELETE, reorder, clear)
-3. Implement `/health` endpoint returning status, item count, and db connection status
-4. Setup Phoenix PubSub broadcasting for all mutations
-5. Configure router with API scope and LiveView routes
-- **Verification**: Integration tests for all REST endpoints, including 404 on non-existent items
-
-### Phase 3: LiveView UI & Real-Time Synchronization
-1. Create `lib/shopping_list_web/live/item_live/index.ex` with pure functional pipeline approach
-2. Implement `mount/3` with PubSub subscription
-3. Handle all PubSub broadcasts with explicit pattern matching
-4. Build UI: text input + Add button, item list with delete/toggle/quantity controls, empty state
-5. Implement auto-focus on input after adding item
-6. Implement drag-and-drop or API-based reordering UI
-- **Verification**: `test/shopping_list_web/live/item_live_test.exs` with dual-socket simulation for real-time cross-client sync
-
-### Phase 4: MCP Server Integration
-1. Create dedicated route `/api/mcp` with JSON-RPC 2.0 over HTTP (manual implementation, no external library)
-2. Implement MCP tools: `list_items`, `add_item(name, quantity)`, `update_item(id, attrs)`, `remove_item(id)`, `reorder_items(item_ids)`, `clear_items`
-3. Map MCP tools to internal `ShoppingList.List` context APIs
-4. Request/response format follows JSON-RPC 2.0 spec: `{"jsonrpc": "2.0", "method": "...", "params": {...}, "id": N}`
-- **Verification**: Isolated controller integration tests asserting JSON responses match JSON-RPC 2.0 envelopes
-
-### Phase 5: Production Hardening, QA & Handover
-- **Static Analysis**:
-  - `mix credo --strict`
-  - `mix dialyzer`
-  - `mix sobelow --config`
-- **Docker & CI/CD**: Finalize Dockerfile, GitHub Actions workflow, docker-compose.yml
-- **Documentation**: Verify .env.example, deployment instructions
-- **Full Test Suite**: `mix test` — all tests pass with 100% coverage of critical paths
+| Phase | File | Status |
+|-------|------|--------|
+| 1: Foundation & Environment Bootstrapping | [`phase-1-foundation.md`](phase-1-foundation.md) | In progress |
+| 2: Context, API & Real-Time Sync | [`phase-2-context-api.md`](phase-2-context-api.md) | Pending |
+| 3: LiveView UI & Real-Time Synchronization | [`phase-3-liveview-ui.md`](phase-3-liveview-ui.md) | Pending |
+| 4: MCP Server Integration | [`phase-4-mcp-server.md`](phase-4-mcp-server.md) | Pending |
+| 5: Production Hardening, QA & Handover | [`phase-5-production.md`](phase-5-production.md) | Pending |
 
 ---
 
 ## 8. Quality Testing Standards
 
-### Context Domain Unit Tests (test/shopping_list/list_test.exs)
-```elixir
-defmodule ShoppingList.ListTest do
-  use ShoppingList.DataCase, async: true
-  alias ShoppingList.List
+Detailed test code and test plans are in each phase file:
 
-  describe "items context transaction layer" do
-    @valid_attrs %{"name" => "Organic Milk", "quantity" => 2}
+| Tests | Phase File |
+|-------|------------|
+| Schema unit tests (`item_test.exs`) | [`phase-1-foundation.md`](phase-1-foundation.md) |
+| Context unit tests (`list_test.exs`) | [`phase-2-context-api.md`](phase-2-context-api.md) |
+| REST API integration tests (`item_controller_test.exs`, `health_controller_test.exs`) | [`phase-2-context-api.md`](phase-2-context-api.md) |
+| LiveView integration tests (`item_live_test.exs`) | [`phase-3-liveview-ui.md`](phase-3-liveview-ui.md) |
+| MCP integration tests (`mcp_controller_test.exs`) | [`phase-4-mcp-server.md`](phase-4-mcp-server.md) |
 
-    test "create_item/1 with valid configurations saves item" do
-      assert {:ok, item} = List.create_item(@valid_attrs)
-      assert item.name == "Organic Milk"
-      assert item.quantity == 2
-      assert item.is_completed == false
-    end
-
-    test "create_item/1 fails on blank name" do
-      assert {:error, changeset} = List.create_item(%{"name" => ""})
-      assert {"can't be blank", _} in errors_on(changeset).name
-    end
-
-    test "create_item/1 fails on name exceeding 200 characters" do
-      long_name = String.duplicate("a", 201)
-      assert {:error, changeset} = List.create_item(%{"name" => long_name})
-      assert {"should be at most 200 character(s)", _} in errors_on(changeset).name
-    end
-
-    test "new items appear at the top (highest sort_order)" do
-      {:ok, first} = List.create_item(%{"name" => "First"})
-      {:ok, second} = List.create_item(%{"name" => "Second"})
-      assert second.sort_order > first.sort_order
-      items = List.list_items()
-      assert Enum.at(items, 0).name == "Second"
-    end
-
-    test "clear_items removes all items" do
-      List.create_item(%{"name" => "Item 1"})
-      List.create_item(%{"name" => "Item 2"})
-      assert {:ok, :cleared} = List.clear_items()
-      assert [] = List.list_items()
-    end
-
-    test "reorder_item_ids assigns sort_order so submitted order matches display" do
-      {:ok, item1} = List.create_item(%{"name" => "First"})
-      {:ok, item2} = List.create_item(%{"name" => "Second"})
-      assert {:ok, reordered} = List.reorder_item_ids([item2.id, item1.id])
-      assert Enum.at(reordered, 0).id == item2.id
-      assert Enum.at(reordered, 0).sort_order == 1
-      assert Enum.at(reordered, 1).id == item1.id
-      assert Enum.at(reordered, 1).sort_order == 0
-    end
-
-    test "reorder_item_ids rolls back on invalid id" do
-      {:ok, item} = List.create_item(%{"name" => "Valid"})
-      assert {:error, _} = List.reorder_item_ids([item.id, "nonexistent-id"])
-      assert [%{name: "Valid"}] = List.list_items()
-    end
-  end
-end
-```
-
-### Real-Time LiveView Integration Tests (test/shopping_list_web/live/item_live_test.exs)
-```elixir
-defmodule ShoppingListWeb.ItemLiveTest do
-  use ShoppingListWeb.ConnCase, async: false
-  import Phoenix.LiveViewTest
-
-  test "concurrent UI synchronization across decoupled active sessions", %{conn: conn} do
-    {:ok, view_client_a, _html_a} = live(conn, "/items")
-    {:ok, view_client_b, _html_b} = live(conn, "/items")
-    render_submit(view_client_a, "save", %{"item" => %{"name" => "Sourdough Bread", "quantity" => "1"}})
-    assert render(view_client_b) =~ "Sourdough Bread"
-  end
-end
-```
-
-### REST API Integration Tests
-- Test all CRUD endpoints (GET, POST, PUT, DELETE, reorder, clear)
-- Verify 404 on deleting non-existent items
-- Verify health endpoint returns correct status
-- Test reorder endpoint with valid and invalid ID sequences
-
-### MCP Integration Tests
-- Verify JSON-RPC 2.0 request/response format
-- Assert correct responses for each MCP tool (list_items, add_item, update_item, remove_item, reorder_items, clear_items)
-- Test error handling for invalid inputs and unknown methods
+### Coverage Requirements
+- All changeset validations must have unit tests
+- All context functions must have happy-path and error-path tests
+- All REST endpoints must have at least one success and one failure case
+- MCP methods must test valid calls, error codes, and unknown methods
+- LiveView tests must verify real-time sync across two concurrent sessions
 
 ---
 

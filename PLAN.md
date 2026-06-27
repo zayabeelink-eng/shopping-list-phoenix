@@ -30,8 +30,8 @@ This specification merges the architectural blueprint from Gemini with the funct
 - **Toggle completion** — mark an item as completed or incomplete
 
 ### Ordering
-- **Reorder items** — user or AI can set a custom order by submitting the full sequence of item IDs. New items appear at the top by default (lowest sort_order value).
-- **Display order** — items are sorted by `sort_order` (ascending), then creation date (descending).
+- **Reorder items** — user or AI can set a custom order by submitting the full sequence of item IDs. New items appear at the top by default (highest sort_order value).
+- **Display order** — items are sorted by `sort_order` (descending), then creation date (descending).
 
 ### Validation & Constraints
 - Item name is required (cannot be empty or whitespace-only)
@@ -121,20 +121,20 @@ defmodule ShoppingList.List do
 
   def list_items do
     Item
-    |> order_by([i], asc: i.sort_order, desc: i.inserted_at)
+    |> order_by([i], desc: i.sort_order, desc: i.inserted_at)
     |> Repo.all()
   end
 
   def list_active_items do
     Item
     |> where([i], is_completed: false)
-    |> order_by([i], asc: i.sort_order, desc: i.inserted_at)
+    |> order_by([i], desc: i.sort_order, desc: i.inserted_at)
     |> Repo.all()
   end
 
   def create_item(attrs \\ %{}) do
-    min_order = Repo.aggregate(Item, :min, :sort_order)
-    next_order = if is_nil(min_order), do: 0, else: min_order - 1
+    max_order = Repo.aggregate(Item, :max, :sort_order) || 0
+    next_order = max_order + 1
     attrs
     |> Map.put("sort_order", next_order)
     |> Item.changeset()
@@ -372,10 +372,11 @@ Each phase must be completed and tested before progressing to the next.
 - **Verification**: `test/shopping_list_web/live/item_live_test.exs` with dual-socket simulation for real-time cross-client sync
 
 ### Phase 4: MCP Server Integration
-1. Create dedicated route `/api/mcp` returning SSE protocol payload conforming to MCP schemas
+1. Create dedicated route `/api/mcp` with JSON-RPC 2.0 over HTTP (manual implementation, no external library)
 2. Implement MCP tools: `list_items`, `add_item(name, quantity)`, `update_item(id, attrs)`, `remove_item(id)`, `reorder_items(item_ids)`, `clear_items`
 3. Map MCP tools to internal `ShoppingList.List` context APIs
-- **Verification**: Isolated controller integration tests asserting JSON responses match MCP structural envelopes
+4. Request/response format follows JSON-RPC 2.0 spec: `{"jsonrpc": "2.0", "method": "...", "params": {...}, "id": N}`
+- **Verification**: Isolated controller integration tests asserting JSON responses match JSON-RPC 2.0 envelopes
 
 ### Phase 5: Production Hardening, QA & Handover
 - **Static Analysis**:
@@ -417,10 +418,10 @@ defmodule ShoppingList.ListTest do
       assert {"should be at most 200 character(s)", _} in errors_on(changeset).name
     end
 
-    test "new items appear at the top (lowest sort_order)" do
+    test "new items appear at the top (highest sort_order)" do
       {:ok, first} = List.create_item(%{"name" => "First"})
       {:ok, second} = List.create_item(%{"name" => "Second"})
-      assert second.sort_order < first.sort_order
+      assert second.sort_order > first.sort_order
       items = List.list_items()
       assert Enum.at(items, 0).name == "Second"
     end
@@ -465,9 +466,9 @@ end
 - Test reorder endpoint with valid and invalid ID sequences
 
 ### MCP Integration Tests
-- Verify SSE connection establishment
-- Assert JSON response envelopes for each MCP tool
-- Test error handling for invalid inputs
+- Verify JSON-RPC 2.0 request/response format
+- Assert correct responses for each MCP tool (list_items, add_item, update_item, remove_item, reorder_items, clear_items)
+- Test error handling for invalid inputs and unknown methods
 
 ---
 

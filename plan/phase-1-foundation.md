@@ -104,10 +104,12 @@ mix ecto.gen.migration create_items
 - `quantity` (:integer, default 1, not null)
 - `is_completed` (:boolean, default false, not null)
 - `sort_order` (:integer, default 0)
+- `deleted_at` (:naive_datetime, nullable — soft delete marker)
 - `inserted_at` (auto from timestamps)
 - `updated_at` (auto from timestamps)
 - Index on `is_completed`
 - Index on `sort_order`
+- Index on `deleted_at`
 
 **Commit**: `create items migration`
 
@@ -115,7 +117,7 @@ mix ecto.gen.migration create_items
 
 **Files**: `lib/shopping_list/list/item.ex`
 **Validations**:
-- `name`: required, 1-200 characters
+- `name`: required, 1-200 characters; normalized via trim + capitalize (milk → Milk, " Milk " → "Milk")
 - `quantity`: required, must be a positive integer (default 1)
 - `is_completed`: default false
 
@@ -132,6 +134,8 @@ mix ecto.gen.migration create_items
 - Negative quantity is rejected
 - Zero quantity is rejected
 - `is_completed` defaults to false
+- `deleted_at` is nil for a valid changeset (not set via user input)
+- Name normalization: "milk" → "Milk", " MILK " → "Milk", "  hello  " → "Hello"
 
 **Commit**: `add item schema unit tests`
 

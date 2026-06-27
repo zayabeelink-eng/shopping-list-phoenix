@@ -87,10 +87,12 @@ This specification merges the architectural blueprint from Gemini with the funct
   - `name` (TEXT, not null, 1-200 chars)
   - `quantity` (INTEGER, default 1, not null)
   - `is_completed` (BOOLEAN, default false, not null)
+- **Name normalization**: trimmed + capitalized on write (milk → Milk, MILK → Milk) so analytics group correctly
   - `sort_order` (INTEGER, for custom ordering)
+  - `deleted_at` (TIMESTAMP, nullable — soft delete marker)
   - `inserted_at` (TIMESTAMP)
   - `updated_at` (TIMESTAMP)
-- **Index**: on `is_completed` for efficient filtering
+- **Index**: on `is_completed` for efficient filtering; on `deleted_at` for soft-delete queries
 - **Persistence**: Data volume mounted at `/app/data`, survives container restarts
 - **WAL Mode**: SQLite Write-Ahead Logging enabled for concurrent access safety
 
@@ -105,10 +107,12 @@ defmodule ShoppingList.Repo.Migrations.CreateItems do
       add :quantity, :integer, default: 1, null: false
       add :is_completed, :boolean, default: false, null: false
       add :sort_order, :integer, default: 0
+      add :deleted_at, :naive_datetime
       timestamps()
     end
     create index(:items, [:is_completed])
     create index(:items, [:sort_order])
+    create index(:items, [:deleted_at])
   end
 end
 ```
@@ -128,6 +132,7 @@ defmodule ShoppingList.List do
 
   def list_items do
     Item
+    |> where([i], is_nil(i.deleted_at))
     |> order_by([i], desc: i.sort_order, desc: i.inserted_at)
     |> Repo.all()
   end
@@ -135,6 +140,7 @@ defmodule ShoppingList.List do
   def list_active_items do
     Item
     |> where([i], is_completed: false)
+    |> where([i], is_nil(i.deleted_at))
     |> order_by([i], desc: i.sort_order, desc: i.inserted_at)
     |> Repo.all()
   end
@@ -157,15 +163,22 @@ defmodule ShoppingList.List do
   end
 
   def delete_item(%Item{} = item) do
+    now = DateTime.utc_now()
     item
-    |> Repo.delete()
+    |> Item.changeset(%{deleted_at: now})
+    |> Repo.update()
     |> broadcast(:item_deleted)
   end
 
   def clear_items do
-    {:ok, _} = Repo.delete_all(from(Item))
-    Phoenix.PubSub.broadcast(ShoppingList.PubSub, @topic, {:items_cleared, :ok})
-    {:ok, :cleared}
+    now = DateTime.utc_now()
+    {count, _} =
+      Item
+      |> where([i], is_nil(i.deleted_at))
+      |> Repo.update_all(set: [deleted_at: now])
+
+    Phoenix.PubSub.broadcast(ShoppingList.PubSub, @topic, {:items_cleared, count})
+    {:ok, count}
   end
 
   def reorder_item_ids(item_ids) do

@@ -15,12 +15,12 @@ Create the business logic layer with all operations and PubSub broadcasting.
 **Files**: `lib/shopping_list/list.ex`
 **Functions**:
 - `subscribe/0` — subscribe to PubSub topic
-- `list_items/0` — all items ordered by `sort_order DESC, inserted_at DESC`
-- `list_active_items/0` — incomplete items only
+- `list_items/0` — non-deleted items ordered by `sort_order DESC, inserted_at DESC`
+- `list_active_items/0` — incomplete, non-deleted items only
 - `create_item/1` — create with `max(sort_order) + 1`, broadcast `:item_created`
 - `update_item/2` — update attrs, broadcast `:item_updated`
-- `delete_item/1` — delete item, broadcast `:item_deleted`
-- `clear_items/0` — delete all, broadcast `:items_cleared`
+- `delete_item/1` — soft delete (set `deleted_at`), broadcast `:item_deleted`
+- `clear_items/0` — soft delete all (set `deleted_at` on all non-deleted), broadcast `:items_cleared`
 - `reorder_item_ids/1` — transactional reorder with `total - index - 1` sort_order assignment, broadcast `:items_reordered` after commit
 - `get_item!/1` — fetch by ID or raise
 
@@ -37,12 +37,13 @@ Create the business logic layer with all operations and PubSub broadcasting.
 - `create_item/1` rejects name > 200 chars
 - `create_item/1` assigns ascending sort_order (new items at top)
 - `update_item/2` modifies fields and broadcasts
-- `delete_item/1` removes item
-- `clear_items/0` removes all items
+- `delete_item/1` sets deleted_at, item excluded from list queries
+- `clear_items/0` sets deleted_at on all non-deleted items
 - `reorder_item_ids/1` assigns sort_order so first in array appears first
 - `reorder_item_ids/1` rolls back entire operation on invalid ID
-- `list_items/0` returns items in correct sort order
-- `list_active_items/0` returns only incomplete items
+- `list_items/0` returns only non-deleted items in correct sort order
+- `list_active_items/0` returns only incomplete, non-deleted items
+- Soft-deleted items are excluded from all list queries
 
 **Commit**: `add context unit tests`
 

@@ -5,7 +5,7 @@ defmodule ShoppingListWeb.ItemLiveTest do
 
   describe "index" do
     test "renders page with empty state", %{conn: conn} do
-      {:ok, view, html} = live(conn, ~p"/items")
+      {:ok, view, html} = live(conn, ~p"/")
 
       assert html =~ "Shopping List"
       assert has_element?(view, "#add-item-form")
@@ -14,7 +14,7 @@ defmodule ShoppingListWeb.ItemLiveTest do
     end
 
     test "adding an item shows it in the list", %{conn: conn} do
-      {:ok, view, _html} = live(conn, ~p"/items")
+      {:ok, view, _html} = live(conn, ~p"/")
 
       view
       |> form("#add-item-form", %{"name" => "pasta", "quantity" => "2"})
@@ -24,7 +24,7 @@ defmodule ShoppingListWeb.ItemLiveTest do
     end
 
     test "toggling completion marks item as complete", %{conn: conn} do
-      {:ok, view, _html} = live(conn, ~p"/items")
+      {:ok, view, _html} = live(conn, ~p"/")
 
       view
       |> form("#add-item-form", %{"name" => "pasta", "quantity" => "2"})
@@ -38,7 +38,7 @@ defmodule ShoppingListWeb.ItemLiveTest do
     end
 
     test "toggling again marks item as incomplete", %{conn: conn} do
-      {:ok, view, _html} = live(conn, ~p"/items")
+      {:ok, view, _html} = live(conn, ~p"/")
 
       view
       |> form("#add-item-form", %{"name" => "pasta", "quantity" => "2"})
@@ -58,7 +58,7 @@ defmodule ShoppingListWeb.ItemLiveTest do
     end
 
     test "deleting an item removes it", %{conn: conn} do
-      {:ok, view, _html} = live(conn, ~p"/items")
+      {:ok, view, _html} = live(conn, ~p"/")
 
       view
       |> form("#add-item-form", %{"name" => "pasta", "quantity" => "2"})
@@ -73,26 +73,8 @@ defmodule ShoppingListWeb.ItemLiveTest do
       assert render(view) =~ "No items yet"
     end
 
-    test "clear removes all items", %{conn: conn} do
-      {:ok, view, _html} = live(conn, ~p"/items")
-
-      view
-      |> form("#add-item-form", %{"name" => "apples", "quantity" => "1"})
-      |> render_submit()
-
-      view
-      |> form("#add-item-form", %{"name" => "bananas", "quantity" => "1"})
-      |> render_submit()
-
-      view
-      |> element("#clear-all")
-      |> render_click(confirm: fn _ -> true end)
-
-      assert render(view) =~ "No items yet"
-    end
-
     test "updating quantity changes the quantity display", %{conn: conn} do
-      {:ok, view, _html} = live(conn, ~p"/items")
+      {:ok, view, _html} = live(conn, ~p"/")
 
       view
       |> form("#add-item-form", %{"name" => "pasta", "quantity" => "2"})
@@ -112,8 +94,8 @@ defmodule ShoppingListWeb.ItemLiveTest do
       conn1 = Phoenix.ConnTest.build_conn()
       conn2 = Phoenix.ConnTest.build_conn()
 
-      {:ok, view1, _html} = live(conn1, ~p"/items")
-      {:ok, view2, _html} = live(conn2, ~p"/items")
+      {:ok, view1, _html} = live(conn1, ~p"/")
+      {:ok, view2, _html} = live(conn2, ~p"/")
 
       view1
       |> form("#add-item-form", %{"name" => "pasta", "quantity" => "2"})

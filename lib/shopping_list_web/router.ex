@@ -29,9 +29,8 @@ defmodule ShoppingListWeb.Router do
   scope "/", ShoppingListWeb do
     pipe_through :browser
 
-    get "/", PageController, :home
     get "/health", HealthController, :index
-    live "/items", ItemLive.Index, :index
+    live "/", ItemLive.Index, :index
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development

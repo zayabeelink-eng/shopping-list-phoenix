@@ -9,7 +9,7 @@ This specification merges the architectural blueprint from Gemini with the funct
 ### Tech Stack Constraints
 - **Runtime**: Elixir 1.18+ (OTP 26+), Phoenix 1.8.5+, LiveView 1.1+, Bandit (HTTP server)
 - **Database**: SQLite 3 via ecto_sqlite3. No PostgreSQL dependencies allowed.
-- **UI Framework**: Tailwind CSS v4 + DaisyUI component libraries.
+- **UI Framework**: Tailwind CSS v4 + DaisyUI v5 component library.
 - **Code Quality & Linting**: Strict Credo, Dialyxir (Dialyzer typespecs), and Sobelow (Static security analysis).
 - **Deployment Target**: Single Docker container running an Elixir Release, deployed onto a self-hosted mini PC on a private Tailscale network.
 
@@ -48,11 +48,13 @@ This specification merges the architectural blueprint from Gemini with the funct
 |--------|------|-------------|
 | GET | `/api/items` | List all items |
 | POST | `/api/items` | Add an item (body: `{"name": "...", "quantity": 1}`) |
-| PUT | `/api/items/{id}` | Update an item (e.g., toggle completion, change quantity) |
-| DELETE | `/api/items/{id}` | Remove an item by ID |
 | PUT | `/api/items/reorder` | Reorder items (body: `{"item_ids": ["id1", "id2", ...]}`) |
+| PUT | `/api/items/{id}` | Update an item (e.g., toggle completion, change quantity) |
 | DELETE | `/api/items/clear` | Remove all items |
+| DELETE | `/api/items/{id}` | Remove an item by ID |
 | GET | `/health` | Health check — returns status, item count, db connection |
+
+> **Route ordering**: `PUT /api/items/reorder` and `DELETE /api/items/clear` must be defined **above** their parameterized counterparts (`/api/items/:id`) in the router, otherwise Phoenix will match `"reorder"` and `"clear"` as `:id` values.
 
 ### MCP Tools (Model Context Protocol)
 - `list_items` — returns all items as JSON
@@ -162,22 +164,30 @@ defmodule ShoppingList.List do
   end
 
   def reorder_item_ids(item_ids) do
-    Repo.transaction(fn ->
-      Enum.with_index(item_ids)
-      |> Enum.reduce(:ok, fn {id, order}, :ok ->
-        case Repo.get(Item, id) do
-          nil -> {:error, "Item #{id} not found"}
-          item -> update_item(item, %{"sort_order" => order})
-        end
+    total = length(item_ids)
+
+    result =
+      Repo.transaction(fn ->
+        Enum.with_index(item_ids)
+        |> Enum.map(fn {id, index} ->
+          case Repo.get(Item, id) do
+            nil -> Repo.rollback("Item #{id} not found")
+            item ->
+              item
+              |> Item.changeset(%{"sort_order" => total - index - 1})
+              |> Repo.update!()
+          end
+        end)
       end)
-      |> case do
-        :ok ->
-          items = Enum.map(item_ids, &Repo.get!(Item, &1))
-          Phoenix.PubSub.broadcast(ShoppingList.PubSub, @topic, {:items_reordered, items})
-          {:ok, items}
-        error -> error
-      end
-    end)
+
+    case result do
+      {:ok, items} ->
+        Phoenix.PubSub.broadcast(ShoppingList.PubSub, @topic, {:items_reordered, items})
+        {:ok, items}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 
   def get_item!(id), do: Repo.get!(Item, id)
@@ -199,10 +209,9 @@ end
 - Item list with per-item delete (x) button
 - Toggle completion checkbox per item
 - Quantity adjustment controls per item
-- Refresh button to reload the list
 - Empty state message when no items exist
 - Auto-focus on input after adding an item
-- Real-time synchronization across multiple connected clients
+- Real-time synchronization across multiple connected clients (no manual refresh needed)
 
 ### LiveView Component (lib/shopping_list_web/live/item_live/index.ex)
 - Pure functional pipeline approach
@@ -349,7 +358,7 @@ Each phase must be completed and tested before progressing to the next.
 ### Phase 1: Foundation & Environment Bootstrapping
 1. Scaffold app: `mix phx.new shopping_list --database sqlite3 --binary-id`
 2. Configure SQLite WAL mode in `config/runtime.exs`
-3. Install Tailwind CSS v4 and DaisyUI in `assets/`
+3. Install Tailwind CSS v4 and DaisyUI v5 in `assets/`
 4. Create items migration with full schema (id, name, quantity, is_completed, sort_order, timestamps)
 5. Generate Item schema and changeset with validations (name: 1-200 chars, quantity: positive integer)
 - **Verification**: `mix test` confirms compilation and basic schema tests pass
@@ -366,7 +375,7 @@ Each phase must be completed and tested before progressing to the next.
 1. Create `lib/shopping_list_web/live/item_live/index.ex` with pure functional pipeline approach
 2. Implement `mount/3` with PubSub subscription
 3. Handle all PubSub broadcasts with explicit pattern matching
-4. Build UI: text input + Add button, item list with delete/toggle/quantity controls, refresh button, empty state
+4. Build UI: text input + Add button, item list with delete/toggle/quantity controls, empty state
 5. Implement auto-focus on input after adding item
 6. Implement drag-and-drop or API-based reordering UI
 - **Verification**: `test/shopping_list_web/live/item_live_test.exs` with dual-socket simulation for real-time cross-client sync
@@ -433,12 +442,20 @@ defmodule ShoppingList.ListTest do
       assert [] = List.list_items()
     end
 
-    test "reorder_item_ids updates sort order correctly" do
+    test "reorder_item_ids assigns sort_order so submitted order matches display" do
       {:ok, item1} = List.create_item(%{"name" => "First"})
       {:ok, item2} = List.create_item(%{"name" => "Second"})
       assert {:ok, reordered} = List.reorder_item_ids([item2.id, item1.id])
-      assert Enum.at(reordered, 0).sort_order == 0
-      assert Enum.at(reordered, 1).sort_order == 1
+      assert Enum.at(reordered, 0).id == item2.id
+      assert Enum.at(reordered, 0).sort_order == 1
+      assert Enum.at(reordered, 1).id == item1.id
+      assert Enum.at(reordered, 1).sort_order == 0
+    end
+
+    test "reorder_item_ids rolls back on invalid id" do
+      {:ok, item} = List.create_item(%{"name" => "Valid"})
+      assert {:error, _} = List.reorder_item_ids([item.id, "nonexistent-id"])
+      assert [%{name: "Valid"}] = List.list_items()
     end
   end
 end

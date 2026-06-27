@@ -55,8 +55,11 @@ if config_env() == :prod do
 
   config :shopping_list, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
+  url_port = String.to_integer(System.get_env("PHX_PORT") || "443")
+  url_scheme = System.get_env("PHX_URL_SCHEME") || "https"
+
   config :shopping_list, ShoppingListWeb.Endpoint,
-    url: [host: host, port: 443, scheme: "https"],
+    url: [host: host, port: url_port, scheme: url_scheme],
     http: [
       # Enable IPv6 and bind on all interfaces.
       # Set it to  {0, 0, 0, 0, 0, 0, 0, 1} for local network only access.

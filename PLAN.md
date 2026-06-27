@@ -15,7 +15,7 @@ This specification merges the architectural blueprint from Gemini with the funct
 
 ### LLM Context & Execution Boundaries
 - **Deterministic Sandboxing**: All operations must execute exclusively within the project directory workspace. No host binaries, Docker sockets, or elevated privileges.
-- **Stateless Compilation**: Execute `mix compile`, `mix assets.deploy`, and `mix test && mix credo --strict` inside the sandbox prior to committing any file.
+- **Stateless Compilation**: Execute `mix compile`, `mix assets.build`, and `mix test && mix credo --strict` inside the sandbox prior to committing any file.
 - **Defensive Code Structure**: Prioritize small, pipeline-oriented functions (`|>`), pattern matching in function heads, and strict module boundaries. Avoid monolithic files.
 
 ---
@@ -30,7 +30,7 @@ This specification merges the architectural blueprint from Gemini with the funct
 - **Toggle completion** — mark an item as completed or incomplete
 
 ### Ordering
-- **Reorder items** — user can set a custom order by submitting the full sequence of item IDs. New items appear at the top by default.
+- **Reorder items** — user or AI can set a custom order by submitting the full sequence of item IDs. New items appear at the top by default (lowest sort_order value).
 - **Display order** — items are sorted by `sort_order` (ascending), then creation date (descending).
 
 ### Validation & Constraints
@@ -38,11 +38,6 @@ This specification merges the architectural blueprint from Gemini with the funct
 - Item name max length: 200 characters
 - Quantity defaults to 1, must be a positive integer
 - Removing a non-existent item returns a 404 error
-
-### User Authentication
-- Users must authenticate before accessing the shopping list
-- Each mutation tracks `updated_by` to identify who made the change
-- Password-based registration and login via `phx.gen.auth`
 
 ---
 
@@ -86,7 +81,6 @@ This specification merges the architectural blueprint from Gemini with the funct
   - `quantity` (INTEGER, default 1, not null)
   - `is_completed` (BOOLEAN, default false, not null)
   - `sort_order` (INTEGER, for custom ordering)
-  - `updated_by` (TEXT, not null, tracks who made the change)
   - `inserted_at` (TIMESTAMP)
   - `updated_at` (TIMESTAMP)
 - **Index**: on `is_completed` for efficient filtering
@@ -104,7 +98,6 @@ defmodule ShoppingList.Repo.Migrations.CreateItems do
       add :quantity, :integer, default: 1, null: false
       add :is_completed, :boolean, default: false, null: false
       add :sort_order, :integer, default: 0
-      add :updated_by, :string, null: false
       timestamps()
     end
     create index(:items, [:is_completed])
@@ -139,19 +132,19 @@ defmodule ShoppingList.List do
     |> Repo.all()
   end
 
-  def create_item(attrs \\ %{}, user_email) do
-    max_order = Repo.aggregate(Item, :max, :sort_order) || 0
+  def create_item(attrs \\ %{}) do
+    min_order = Repo.aggregate(Item, :min, :sort_order)
+    next_order = if is_nil(min_order), do: 0, else: min_order - 1
     attrs
-    |> Map.put("sort_order", max_order + 1)
-    |> Map.put("updated_by", user_email)
+    |> Map.put("sort_order", next_order)
     |> Item.changeset()
     |> Repo.insert()
     |> broadcast(:item_created)
   end
 
-  def update_item(%Item{} = item, attrs, user_email) do
+  def update_item(%Item{} = item, attrs) do
     item
-    |> Item.changeset(Map.put(attrs, "updated_by", user_email))
+    |> Item.changeset(attrs)
     |> Repo.update()
     |> broadcast(:item_updated)
   end
@@ -168,24 +161,23 @@ defmodule ShoppingList.List do
     {:ok, :cleared}
   end
 
-  def reorder_item_ids(item_ids, user_email) do
-    Enum.with_index(item_ids)
-    |> Enum.reduce({:ok, []}, fn {id, order}, {:ok, updated} ->
-      case Repo.get(Item, id) do
-        nil -> {:error, "Item #{id} not found"}
-        item ->
-          case update_item(item, %{"sort_order" => order, "updated_by" => user_email}, user_email) do
-            {:ok, updated_item} -> {:ok, [updated_item | updated]}
-            {:error, _} -> {:error, "Failed to update item #{id}"}
-          end
+  def reorder_item_ids(item_ids) do
+    Repo.transaction(fn ->
+      Enum.with_index(item_ids)
+      |> Enum.reduce(:ok, fn {id, order}, :ok ->
+        case Repo.get(Item, id) do
+          nil -> {:error, "Item #{id} not found"}
+          item -> update_item(item, %{"sort_order" => order})
+        end
+      end)
+      |> case do
+        :ok ->
+          items = Enum.map(item_ids, &Repo.get!(Item, &1))
+          Phoenix.PubSub.broadcast(ShoppingList.PubSub, @topic, {:items_reordered, items})
+          {:ok, items}
+        error -> error
       end
     end)
-    |> case do
-      {:ok, items} ->
-        Phoenix.PubSub.broadcast(ShoppingList.PubSub, @topic, {:items_reordered, items})
-        {:ok, Enum.reverse(items)}
-      error -> error
-    end
   end
 
   def get_item!(id), do: Repo.get!(Item, id)
@@ -238,7 +230,8 @@ COPY config config
 COPY lib lib
 COPY priv priv
 COPY assets assets
-RUN mix assets.deploy
+RUN cd assets && npm ci
+RUN mix assets.build
 RUN mix compile
 RUN mix release --overwrite
 
@@ -260,7 +253,7 @@ CMD ["/app/bin/shopping_list", "start"]
 name: Production CI/CD Pipeline
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
 jobs:
   verify-and-build:
     runs-on: ubuntu-latest
@@ -353,14 +346,13 @@ WATCHTOWER_INTERVAL=300
 
 Each phase must be completed and tested before progressing to the next.
 
-### Phase 1: Foundation, Auth & Environment Bootstrapping
+### Phase 1: Foundation & Environment Bootstrapping
 1. Scaffold app: `mix phx.new shopping_list --database sqlite3 --binary-id`
-2. Setup authentication: `mix phx.gen.auth Accounts User users`
-3. Configure SQLite WAL mode in `config/runtime.exs`
-4. Install Tailwind CSS v4 and DaisyUI in `assets/`
-5. Create items migration with full schema (id, name, quantity, is_completed, sort_order, updated_by, timestamps)
-6. Generate Item schema and changeset with validations (name: 1-200 chars, quantity: positive integer)
-- **Verification**: `mix test` confirms all 40+ auto-generated authentication specs pass
+2. Configure SQLite WAL mode in `config/runtime.exs`
+3. Install Tailwind CSS v4 and DaisyUI in `assets/`
+4. Create items migration with full schema (id, name, quantity, is_completed, sort_order, timestamps)
+5. Generate Item schema and changeset with validations (name: 1-200 chars, quantity: positive integer)
+- **Verification**: `mix test` confirms compilation and basic schema tests pass
 
 ### Phase 2: Context, API & Real-Time Sync
 1. Implement `ShoppingList.List` context with all CRUD operations, reorder, and clear
@@ -407,36 +399,43 @@ defmodule ShoppingList.ListTest do
   describe "items context transaction layer" do
     @valid_attrs %{"name" => "Organic Milk", "quantity" => 2}
 
-    test "create_item/2 with valid configurations saves item and writes updated_by tag" do
-      assert {:ok, item} = List.create_item(@valid_attrs, "user@domain.local")
+    test "create_item/1 with valid configurations saves item" do
+      assert {:ok, item} = List.create_item(@valid_attrs)
       assert item.name == "Organic Milk"
       assert item.quantity == 2
-      assert item.updated_by == "user@domain.local"
       assert item.is_completed == false
     end
 
-    test "create_item/2 fails on blank name" do
-      assert {:error, changeset} = List.create_item(%{"name" => ""}, "user@domain.local")
+    test "create_item/1 fails on blank name" do
+      assert {:error, changeset} = List.create_item(%{"name" => ""})
       assert {"can't be blank", _} in errors_on(changeset).name
     end
 
-    test "create_item/2 fails on name exceeding 200 characters" do
+    test "create_item/1 fails on name exceeding 200 characters" do
       long_name = String.duplicate("a", 201)
-      assert {:error, changeset} = List.create_item(%{"name" => long_name}, "user@domain.local")
+      assert {:error, changeset} = List.create_item(%{"name" => long_name})
       assert {"should be at most 200 character(s)", _} in errors_on(changeset).name
     end
 
+    test "new items appear at the top (lowest sort_order)" do
+      {:ok, first} = List.create_item(%{"name" => "First"})
+      {:ok, second} = List.create_item(%{"name" => "Second"})
+      assert second.sort_order < first.sort_order
+      items = List.list_items()
+      assert Enum.at(items, 0).name == "Second"
+    end
+
     test "clear_items removes all items" do
-      List.create_item(%{"name" => "Item 1"}, "user@domain.local")
-      List.create_item(%{"name" => "Item 2"}, "user@domain.local")
+      List.create_item(%{"name" => "Item 1"})
+      List.create_item(%{"name" => "Item 2"})
       assert {:ok, :cleared} = List.clear_items()
       assert [] = List.list_items()
     end
 
     test "reorder_item_ids updates sort order correctly" do
-      {:ok, item1} = List.create_item(%{"name" => "First"}, "user@domain.local")
-      {:ok, item2} = List.create_item(%{"name" => "Second"}, "user@domain.local")
-      assert {:ok, reordered} = List.reorder_item_ids([item2.id, item1.id], "user@domain.local")
+      {:ok, item1} = List.create_item(%{"name" => "First"})
+      {:ok, item2} = List.create_item(%{"name" => "Second"})
+      assert {:ok, reordered} = List.reorder_item_ids([item2.id, item1.id])
       assert Enum.at(reordered, 0).sort_order == 0
       assert Enum.at(reordered, 1).sort_order == 1
     end
@@ -449,13 +448,6 @@ end
 defmodule ShoppingListWeb.ItemLiveTest do
   use ShoppingListWeb.ConnCase, async: false
   import Phoenix.LiveViewTest
-  alias ShoppingList.Accounts
-
-  setup %{conn: conn} do
-    {:ok, user} = Accounts.register_user(%{email: "user@domain.local", password: "Password1234!"})
-    authed_conn = log_in_user(conn, user)
-    {:ok, conn: authed_conn, user: user}
-  end
 
   test "concurrent UI synchronization across decoupled active sessions", %{conn: conn} do
     {:ok, view_client_a, _html_a} = live(conn, "/items")
@@ -467,7 +459,7 @@ end
 ```
 
 ### REST API Integration Tests
-- Test all CRUD endpoints with authenticated and unauthenticated requests
+- Test all CRUD endpoints (GET, POST, PUT, DELETE, reorder, clear)
 - Verify 404 on deleting non-existent items
 - Verify health endpoint returns correct status
 - Test reorder endpoint with valid and invalid ID sequences

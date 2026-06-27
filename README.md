@@ -50,7 +50,15 @@ mix precommit                      # Run the full quality gate
 
 ## Deployment
 
-Deployed as a Docker container on a self-hosted mini PC behind Tailscale. CI/CD via GitHub Actions pushes to GHCR, with Watchtower handling automatic updates.
+Deployed as a Docker container on a self-hosted mini PC behind Tailscale.
+
+### CI/CD Pipeline
+
+On every push to `main`, GitHub Actions runs:
+
+1. **Quality Verification Suite** — `mix format --check-formatted`, `mix credo --strict`, `mix test`
+2. **Docker Build & Push** — Multi-stage build (Alpine) producing a slim production image, pushed to `ghcr.io/zayabeelink-eng/shopping-list-phoenix/shopping_list:latest`
+3. **Automatic Update** — [Watchtower](https://github.com/containrrr/watchtower) running as a sidecar container polls GHCR every 5 minutes. When a new image is detected, it pulls and restarts the container with zero manual intervention.
 
 ## License
 

@@ -14,16 +14,24 @@ defmodule ShoppingListWeb.Router do
     plug :accepts, ["json"]
   end
 
+  scope "/api", ShoppingListWeb do
+    pipe_through :api
+
+    get "/items", ItemController, :index
+    post "/items", ItemController, :create
+    put "/items/reorder", ItemController, :reorder
+    put "/items/:id", ItemController, :update
+    delete "/items/clear", ItemController, :clear
+    delete "/items/:id", ItemController, :delete
+  end
+
   scope "/", ShoppingListWeb do
     pipe_through :browser
 
     get "/", PageController, :home
+    get "/health", HealthController, :index
+    live "/items", ItemLive.Index, :index
   end
-
-  # Other scopes may use custom stacks.
-  # scope "/api", ShoppingListWeb do
-  #   pipe_through :api
-  # end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
   if Application.compile_env(:shopping_list, :dev_routes) do

@@ -1,15 +1,106 @@
 defmodule ShoppingListWeb.ItemLive.Index do
   use ShoppingListWeb, :live_view
 
+  alias ShoppingList.List
+
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, :items, [])}
+    if connected?(socket) do
+      _ = List.subscribe()
+    end
+
+    socket =
+      socket
+      |> assign(:form, to_form(%{"name" => "", "quantity" => 1}))
+      |> stream(:items, List.list_items(), reset: true)
+
+    {:ok, socket}
   end
 
   @impl true
-  def render(assigns) do
-    ~H"""
-    <div>Shopping list UI coming soon</div>
-    """
+  def handle_info({:item_created, item}, socket) do
+    {:noreply, stream_insert(socket, :items, item, at: -1)}
+  end
+
+  def handle_info({:item_updated, item}, socket) do
+    {:noreply, stream_insert(socket, :items, item)}
+  end
+
+  def handle_info({:item_deleted, item}, socket) do
+    {:noreply, stream_delete(socket, :items, item)}
+  end
+
+  def handle_info({:items_reordered, _data}, socket) do
+    {:noreply, stream(socket, :items, List.list_items(), reset: true)}
+  end
+
+  def handle_info({:items_cleared, _data}, socket) do
+    {:noreply, stream(socket, :items, [], reset: true)}
+  end
+
+  def handle_info(_info, socket) do
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event("save", %{"name" => name, "quantity" => quantity}, socket) do
+    name = String.trim(name)
+
+    if name == "" do
+      {:noreply,
+       socket
+       |> assign(
+         :form,
+         to_form(%{"name" => "", "quantity" => 1}, errors: [name: "can't be blank"])
+       )}
+    else
+      quantity =
+        case Integer.parse(quantity) do
+          {int, _} when int > 0 -> int
+          _ -> 1
+        end
+
+      case List.create_item(%{name: name, quantity: quantity}) do
+        {:ok, _item} ->
+          {:noreply, assign(socket, :form, to_form(%{"name" => "", "quantity" => 1}))}
+
+        {:error, changeset} ->
+          {:noreply, assign(socket, :form, to_form(changeset))}
+      end
+    end
+  end
+
+  def handle_event("toggle", %{"id" => id}, socket) do
+    item = List.get_item!(id)
+    _ = List.update_item(item, %{is_completed: !item.is_completed})
+    {:noreply, socket}
+  end
+
+  def handle_event("delete", %{"id" => id}, socket) do
+    _ = List.get_item!(id) |> List.delete_item()
+    {:noreply, socket}
+  end
+
+  def handle_event("clear", _params, socket) do
+    _ = List.clear_items()
+    {:noreply, socket}
+  end
+
+  def handle_event("update-quantity", %{"id" => id, "quantity" => quantity}, socket) do
+    item = List.get_item!(id)
+
+    quantity =
+      case Integer.parse(quantity) do
+        {int, _} when int > 0 -> int
+        _ -> 1
+      end
+
+    _ = List.update_item(item, %{quantity: quantity})
+    {:noreply, socket}
+  end
+
+  def handle_event("reorder", %{"ids" => ids}, socket) do
+    _ = List.reorder_item_ids(ids)
+    {:noreply, socket}
   end
 end

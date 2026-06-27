@@ -5,7 +5,12 @@ config :shopping_list, ShoppingList.Repo,
   database: Path.expand("../shopping_list_dev.db", __DIR__),
   pool_size: 5,
   stacktrace: true,
-  show_sensitive_data_on_connection_error: true
+  show_sensitive_data_on_connection_error: true,
+  options: [
+    mode: :rw,
+    journal_mode: :wal,
+    foreign_keys: :on
+  ]
 
 # For development, we disable any cache and enable
 # debugging and code reloading.

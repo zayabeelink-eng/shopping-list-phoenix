@@ -8,7 +8,11 @@ import Config
 config :shopping_list, ShoppingList.Repo,
   database: Path.expand("../shopping_list_test.db", __DIR__),
   pool_size: 5,
-  pool: Ecto.Adapters.SQL.Sandbox
+  pool: Ecto.Adapters.SQL.Sandbox,
+  options: [
+    journal_mode: :wal,
+    foreign_keys: :on
+  ]
 
 # We don't run a server during test. If one is required,
 # you can enable the server option below.

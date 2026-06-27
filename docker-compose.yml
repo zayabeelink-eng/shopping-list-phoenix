@@ -24,6 +24,7 @@ services:
       - WATCHTOWER_POLL_INTERVAL=${WATCHTOWER_INTERVAL:-300}
       - WATCHTOWER_CLEANUP=true
       - WATCHTOWER_TIMEOUT=30s
+      - DOCKER_API_VERSION=1.40
 
 volumes:
   shopping_list_data:

@@ -6,14 +6,18 @@ This is a web application written using the Phoenix web framework.
 - Pre-commit hooks (lefthook) run `mix precommit` automatically on every `git commit`
 - Use the already included and available `:req` (`Req`) library for HTTP requests, **avoid** `:httpoison`, `:tesla`, and `:httpc`. Req is included by default and is the preferred HTTP client for Phoenix apps
 
-## Incremental Commits
+## Development workflow
 
-- **Always** create incremental git commits after completing each logical step from the plan, using the commit message specified in the plan file
-- **Never** batch multiple plan steps into a single commit — each step gets its own commit
-- After each step, run `git add <files>` and `git commit -m "<message>"` to trigger the lefthook pre-commit quality gate
-- **Do not proceed** to the next step until the current commit's lefthook passes (compile, credo, format, tests)
-- If lefthook fails, fix the issues and recommit before moving on
-- At the end of a phase, verify `git log --oneline` shows one commit per step
+Every feature request or change must be broken down into small, incremental steps:
+
+1. **Plan** — read all relevant files to understand the codebase, then outline the steps needed
+2. **Implement one step at a time** — write the code for a single logical change
+3. **Add automated tests** — every step must include tests that validate the behavior
+4. **Commit after each step** — run `git add <files>` and `git commit -m "<message>"` to trigger the lefthook pre-commit quality gate
+5. **Fix failures immediately** — if lefthook fails (compile, credo, format, tests), fix the issues and recommit before moving on
+6. **Repeat** — proceed to the next step only after the current one is committed successfully
+
+**Never** batch multiple logical changes into a single commit.
 
 ### Phoenix v1.8 guidelines
 

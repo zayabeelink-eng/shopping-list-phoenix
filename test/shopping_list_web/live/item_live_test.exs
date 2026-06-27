@@ -91,7 +91,7 @@ defmodule ShoppingListWeb.ItemLiveTest do
     end
 
     test "toggle hides completed items when active", %{conn: conn} do
-      {:ok, view, _html} = live(conn, ~p"/items")
+      {:ok, view, _html} = live(conn, ~p"/")
 
       view
       |> form("#add-item-form", %{"name" => "pasta", "quantity" => "1"})
@@ -111,7 +111,7 @@ defmodule ShoppingListWeb.ItemLiveTest do
     end
 
     test "toggle shows completed items again when re-enabled", %{conn: conn} do
-      {:ok, view, _html} = live(conn, ~p"/items")
+      {:ok, view, _html} = live(conn, ~p"/")
 
       view
       |> form("#add-item-form", %{"name" => "pasta", "quantity" => "1"})

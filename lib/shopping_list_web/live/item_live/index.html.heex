@@ -1,0 +1,105 @@
+<Layouts.app flash={@flash} current_scope={@current_scope}>
+  <div class="max-w-2xl mx-auto p-4">
+    <header class="mb-8">
+      <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">Shopping List</h1>
+      <p class="text-sm text-gray-500 mt-1">Keep track of what you need to buy</p>
+    </header>
+
+    <.form for={@form} id="add-item-form" phx-submit="save">
+      <div class="flex gap-2">
+        <div class="flex-1">
+          <.input field={@form[:name]} type="text" placeholder="Add item..." />
+        </div>
+        <div class="w-24">
+          <.input field={@form[:quantity]} type="number" min="1" value="1" />
+        </div>
+        <.button
+          phx-disable-with="Adding..."
+          class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg px-4 py-2 transition-colors"
+        >
+          Add
+        </.button>
+      </div>
+    </.form>
+
+    <div id="items" phx-update="stream" class="space-y-2 mt-6">
+      <div class="hidden only:block text-center py-12">
+        <.icon
+          name="hero-shopping-cart"
+          class="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600"
+        />
+        <p class="text-gray-500 mt-3">No items yet. Add one above!</p>
+      </div>
+
+      <div
+        :for={{id, item} <- @streams.items}
+        id={id}
+        class="flex items-center gap-3 p-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow"
+      >
+        <input
+          type="checkbox"
+          checked={item.is_completed}
+          phx-click="toggle"
+          phx-value-id={item.id}
+          class="w-5 h-5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+        />
+
+        <span class={[
+          "flex-1 font-medium",
+          item.is_completed && "line-through text-gray-400 dark:text-gray-500",
+          not item.is_completed && "text-gray-900 dark:text-gray-100"
+        ]}>
+          {item.name}
+        </span>
+
+        <div class="flex items-center gap-1">
+          <button
+            type="button"
+            phx-click="update-quantity"
+            phx-value-id={item.id}
+            phx-value-quantity={max(1, item.quantity - 1)}
+            class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-colors text-sm font-bold"
+          >
+            -
+          </button>
+
+          <span class="w-8 text-center text-sm font-semibold text-gray-700 dark:text-gray-300">
+            {item.quantity}
+          </span>
+
+          <button
+            type="button"
+            phx-click="update-quantity"
+            phx-value-id={item.id}
+            phx-value-quantity={item.quantity + 1}
+            class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-colors text-sm font-bold"
+          >
+            +
+          </button>
+        </div>
+
+        <button
+          type="button"
+          phx-click="delete"
+          phx-value-id={item.id}
+          phx-confirm="Delete this item?"
+          class="w-8 h-8 flex items-center justify-center rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+        >
+          <.icon name="hero-trash" class="w-5 h-5" />
+        </button>
+      </div>
+    </div>
+
+    <%= if @streams.items do %>
+      <div class="mt-6 flex justify-end">
+        <.button
+          phx-click="clear"
+          phx-confirm="Clear all items?"
+          class="text-sm text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg px-3 py-2 transition-colors"
+        >
+          Clear All
+        </.button>
+      </div>
+    <% end %>
+  </div>
+</Layouts.app>

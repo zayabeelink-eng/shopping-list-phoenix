@@ -3,6 +3,8 @@ defmodule ShoppingListWeb.ItemLive.Index do
 
   alias ShoppingList.List
 
+  embed_templates "item_live/*"
+
   @impl true
   def mount(_params, _session, socket) do
     if connected?(socket) do

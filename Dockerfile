@@ -1,7 +1,6 @@
 FROM hexpm/elixir:1.18.1-erlang-27.2-alpine-3.21.2 AS builder
-RUN apk add --no-cache build-base git nodejs npm ca-certificates && update-ca-certificates
+RUN apk add --no-cache build-base git nodejs npm
 WORKDIR /app
-RUN mix local.hex --force && mix local.rebar --force
 ENV MIX_ENV="prod"
 COPY mix.exs mix.lock ./
 RUN mix deps.get --only $MIX_ENV

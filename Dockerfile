@@ -16,7 +16,7 @@ RUN mix compile
 RUN mix release --overwrite
 
 FROM alpine:3.21.2
-RUN apk add --no-cache libstdc++ openssl ncurses-libs timezone sqlite-dev
+RUN apk add --no-cache libstdc++ openssl ncurses-libs tzdata sqlite-dev
 WORKDIR /app
 RUN chown nobody:nobody /app
 USER nobody:nobody

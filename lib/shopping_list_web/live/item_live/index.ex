@@ -14,26 +14,27 @@ defmodule ShoppingListWeb.ItemLive.Index do
     socket =
       socket
       |> assign(:form, to_form(%{"name" => "", "quantity" => 1}))
+      |> assign(:show_completed, true)
       |> stream(:items, List.list_items(), reset: true)
 
     {:ok, socket}
   end
 
   @impl true
-  def handle_info({:item_created, item}, socket) do
-    {:noreply, stream_insert(socket, :items, item, at: -1)}
+  def handle_info({:item_created, _item}, socket) do
+    {:noreply, stream(socket, :items, filtered_items(socket), reset: true)}
   end
 
-  def handle_info({:item_updated, item}, socket) do
-    {:noreply, stream_insert(socket, :items, item)}
+  def handle_info({:item_updated, _item}, socket) do
+    {:noreply, stream(socket, :items, filtered_items(socket), reset: true)}
   end
 
-  def handle_info({:item_deleted, item}, socket) do
-    {:noreply, stream_delete(socket, :items, item)}
+  def handle_info({:item_deleted, _item}, socket) do
+    {:noreply, stream(socket, :items, filtered_items(socket), reset: true)}
   end
 
   def handle_info({:items_reordered, _data}, socket) do
-    {:noreply, stream(socket, :items, List.list_items(), reset: true)}
+    {:noreply, stream(socket, :items, filtered_items(socket), reset: true)}
   end
 
   def handle_info({:items_cleared, _data}, socket) do
@@ -104,5 +105,24 @@ defmodule ShoppingListWeb.ItemLive.Index do
   def handle_event("reorder", %{"ids" => ids}, socket) do
     _ = List.reorder_item_ids(ids)
     {:noreply, socket}
+  end
+
+  def handle_event("toggle-completed-filter", _params, socket) do
+    show = not socket.assigns.show_completed
+
+    items = if show, do: List.list_items(), else: List.list_active_items()
+
+    {:noreply,
+     socket
+     |> assign(:show_completed, show)
+     |> stream(:items, items, reset: true)}
+  end
+
+  defp filtered_items(socket) do
+    if socket.assigns.show_completed do
+      List.list_items()
+    else
+      List.list_active_items()
+    end
   end
 end

@@ -90,6 +90,52 @@ defmodule ShoppingListWeb.ItemLiveTest do
       assert render(view) =~ "3"
     end
 
+    test "toggle hides completed items when active", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/items")
+
+      view
+      |> form("#add-item-form", %{"name" => "pasta", "quantity" => "1"})
+      |> render_submit()
+
+      view
+      |> element("input[type=checkbox]")
+      |> render_click()
+
+      assert has_element?(view, "span.line-through")
+
+      view
+      |> element("[phx-click=toggle-completed-filter]")
+      |> render_click()
+
+      refute has_element?(view, "span.line-through")
+    end
+
+    test "toggle shows completed items again when re-enabled", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/items")
+
+      view
+      |> form("#add-item-form", %{"name" => "pasta", "quantity" => "1"})
+      |> render_submit()
+
+      view
+      |> element("input[type=checkbox]")
+      |> render_click()
+
+      assert has_element?(view, "span.line-through")
+
+      view
+      |> element("[phx-click=toggle-completed-filter]")
+      |> render_click()
+
+      refute has_element?(view, "span.line-through")
+
+      view
+      |> element("[phx-click=toggle-completed-filter]")
+      |> render_click()
+
+      assert has_element?(view, "span.line-through")
+    end
+
     test "two live sessions sync in real-time via PubSub", %{conn: _conn} do
       conn1 = Phoenix.ConnTest.build_conn()
       conn2 = Phoenix.ConnTest.build_conn()

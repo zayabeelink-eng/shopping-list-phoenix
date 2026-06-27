@@ -52,8 +52,8 @@ defmodule ShoppingList.List do
       |> Repo.one()
       |> Kernel.||(-1)
 
-    attrs
-    |> Item.changeset(%{sort_order: max_sort + 1})
+    %Item{}
+    |> Item.changeset(Map.put(attrs, "sort_order", max_sort + 1))
     |> Repo.insert()
     |> case do
       {:ok, item} ->
@@ -132,11 +132,11 @@ defmodule ShoppingList.List do
       update_sort_orders(item_ids, item_map, total)
     end)
     |> case do
-      :ok ->
+      {:ok, _} ->
         broadcast(:items_reordered, %{item_ids: item_ids})
         :ok
 
-      :error ->
+      _ ->
         :error
     end
   end

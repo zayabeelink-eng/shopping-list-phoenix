@@ -2,6 +2,9 @@ defmodule ShoppingList.List.Item do
   use Ecto.Schema
   import Ecto.Changeset
 
+  @primary_key {:id, :binary_id, autogenerate: true}
+  @foreign_key_type :binary_id
+
   schema "items" do
     field :is_completed, :boolean, default: false
     field :name, :string
@@ -31,7 +34,6 @@ defmodule ShoppingList.List.Item do
     |> validate_length(:name, min: 1, max: 200)
     |> validate_number(:quantity, greater_than: 0)
     |> normalize_name()
-    |> safe_change()
   end
 
   defp normalize_name(changeset) do
@@ -53,11 +55,4 @@ defmodule ShoppingList.List.Item do
     do: String.upcase(<<first>>) <> String.downcase(rest)
 
   defp capitalize_first(""), do: ""
-
-  defp safe_change(changeset) do
-    case apply_action(changeset, :validate) do
-      {:ok, _} -> changeset
-      {:error, cs} -> cs
-    end
-  end
 end

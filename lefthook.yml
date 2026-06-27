@@ -1,0 +1,6 @@
+pre-commit:
+  commands:
+    precommit:
+      run: mix precommit
+      env:
+        MIX_ENV: test

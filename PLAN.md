@@ -18,6 +18,11 @@ This specification merges the architectural blueprint from Gemini with the funct
 - **Stateless Compilation**: Execute `mix compile`, `mix assets.build`, and `mix test && mix credo --strict` inside the sandbox prior to committing any file.
 - **Defensive Code Structure**: Prioritize small, pipeline-oriented functions (`|>`), pattern matching in function heads, and strict module boundaries. Avoid monolithic files.
 
+### Pre-Commit Enforcement (lefthook)
+- Every commit runs `mix format --check-formatted`, `mix credo --strict`, `mix compile --warnings-as-errors`, and `mix test --warnings-as-errors`
+- Halt on any failure — no bypassing quality gates
+- Config stored in `lefthook.yml` (checked into version control)
+
 ---
 
 ## 2. Functional Requirements
@@ -357,11 +362,13 @@ Each phase must be completed and tested before progressing to the next.
 
 ### Phase 1: Foundation & Environment Bootstrapping
 1. Scaffold app: `mix phx.new shopping_list --database sqlite3 --binary-id`
-2. Configure SQLite WAL mode in `config/runtime.exs`
-3. Install Tailwind CSS v4 and DaisyUI v5 in `assets/`
-4. Create items migration with full schema (id, name, quantity, is_completed, sort_order, timestamps)
-5. Generate Item schema and changeset with validations (name: 1-200 chars, quantity: positive integer)
-- **Verification**: `mix test` confirms compilation and basic schema tests pass
+2. Install lefthook (`brew install lefthook`) and configure pre-commit hooks (`lefthook.yml`)
+3. Run `lefthook install` to register the git hook
+4. Configure SQLite WAL mode in `config/runtime.exs`
+5. Install Tailwind CSS v4 and DaisyUI v5 in `assets/`
+6. Create items migration with full schema (id, name, quantity, is_completed, sort_order, timestamps)
+7. Generate Item schema and changeset with validations (name: 1-200 chars, quantity: positive integer)
+- **Verification**: `mix test` confirms compilation and basic schema tests pass; pre-commit hook blocks on failures
 
 ### Phase 2: Context, API & Real-Time Sync
 1. Implement `ShoppingList.List` context with all CRUD operations, reorder, and clear

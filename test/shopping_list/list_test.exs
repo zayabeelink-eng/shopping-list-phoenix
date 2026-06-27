@@ -1,5 +1,5 @@
 defmodule ShoppingList.ListTest do
-  use ShoppingList.DataCase, async: true
+  use ShoppingList.DataCase, async: false
 
   alias ShoppingList.List
   alias ShoppingList.List.Item

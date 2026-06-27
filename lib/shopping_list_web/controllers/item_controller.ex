@@ -16,11 +16,9 @@ defmodule ShoppingListWeb.ItemController do
         |> render(:show, item: item)
 
       {:error, changeset} ->
-        errors = Enum.map(changeset.errors, &to_string/1)
-
         conn
         |> put_status(:unprocessable_entity)
-        |> json(%{error: "Invalid parameters", details: errors})
+        |> json(%{error: "Invalid parameters", details: format_errors(changeset)})
     end
   end
 
@@ -32,11 +30,9 @@ defmodule ShoppingListWeb.ItemController do
         render(conn, :show, item: item)
 
       {:error, changeset} ->
-        errors = Enum.map(changeset.errors, &to_string/1)
-
         conn
         |> put_status(:unprocessable_entity)
-        |> json(%{error: "Invalid parameters", details: errors})
+        |> json(%{error: "Invalid parameters", details: format_errors(changeset)})
     end
   rescue
     Ecto.NoResultsError ->
@@ -85,5 +81,13 @@ defmodule ShoppingListWeb.ItemController do
   def clear(conn, _params) do
     _ = List.clear_items()
     send_resp(conn, :ok, "")
+  end
+
+  defp format_errors(changeset) do
+    Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->
+      Regex.replace(~r"%{(\w+)}", msg, fn _, key ->
+        opts |> Keyword.get(String.to_existing_atom(key), key) |> to_string()
+      end)
+    end)
   end
 end

@@ -6,6 +6,7 @@ defmodule ShoppingListWeb.McpController do
   @jsonrpc_invalid_request -32_600
   @jsonrpc_method_not_found -32_601
   @jsonrpc_invalid_params -32_602
+  @jsonrpc_internal_error -32_603
 
   @impl true
   def call(conn, _params) do
@@ -15,7 +16,14 @@ defmodule ShoppingListWeb.McpController do
         request_id = Map.get(conn.body_params, "id")
 
         if valid_method?(method) do
-          respond(conn, execute_method(method, params), request_id)
+          result =
+            try do
+              execute_method(method, params)
+            rescue
+              e -> {:error, :internal_error, Exception.message(e)}
+            end
+
+          respond(conn, result, request_id)
         else
           conn
           |> put_resp_content_type("application/json")
@@ -71,6 +79,12 @@ defmodule ShoppingListWeb.McpController do
     conn
     |> put_resp_content_type("application/json")
     |> send_resp(:ok, jsonrpc_error(@jsonrpc_invalid_params, reason, request_id))
+  end
+
+  defp respond(conn, {:error, :internal_error, reason}, request_id) do
+    conn
+    |> put_resp_content_type("application/json")
+    |> send_resp(:ok, jsonrpc_error(@jsonrpc_internal_error, reason, request_id))
   end
 
   defp execute_method("list_items", _params) do

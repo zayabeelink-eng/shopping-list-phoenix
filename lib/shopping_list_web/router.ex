@@ -14,6 +14,15 @@ defmodule ShoppingListWeb.Router do
     plug :accepts, ["json"]
   end
 
+  pipeline :mcp do
+    plug :accepts, ["json"]
+
+    plug Plug.Parsers,
+      parsers: [:json],
+      pass: ["application/json"],
+      json_decoder: Jason
+  end
+
   scope "/api", ShoppingListWeb do
     pipe_through :api
 
@@ -23,6 +32,11 @@ defmodule ShoppingListWeb.Router do
     put "/items/:id", ItemController, :update
     delete "/items/clear", ItemController, :clear
     delete "/items/:id", ItemController, :delete
+  end
+
+  scope "/api", ShoppingListWeb do
+    pipe_through :mcp
+
     post "/mcp", McpController, :call
   end
 

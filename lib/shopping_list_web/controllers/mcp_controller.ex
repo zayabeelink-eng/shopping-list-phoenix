@@ -9,22 +9,43 @@ defmodule ShoppingListWeb.McpController do
 
   @impl true
   def call(conn, _params) do
-    with {:ok, body} <- fetch_body(conn),
-         {:ok, request} <- parse_jsonrpc_request(body) do
-      request_id = Map.get(request, "id")
-      method = request["method"]
-      params = request["params"] || %{}
+    case conn.body_params do
+      %{"jsonrpc" => "2.0", "method" => method} ->
+        params = Map.get(conn.body_params, "params", %{})
+        request_id = Map.get(conn.body_params, "id")
 
-      response =
         if valid_method?(method) do
-          execute_method(method, params)
+          respond(conn, execute_method(method, params), request_id)
         else
-          {:error, :method_not_found, method}
+          conn
+          |> put_resp_content_type("application/json")
+          |> send_resp(
+            :ok,
+            jsonrpc_error(@jsonrpc_method_not_found, "Method \"#{method}\" not found", request_id)
+          )
         end
 
-      send_response(conn, response, request_id)
-    else
-      {:error, :invalid_request} ->
+      %{"jsonrpc" => _version} ->
+        conn
+        |> put_resp_content_type("application/json")
+        |> send_resp(
+          :bad_request,
+          jsonrpc_error(@jsonrpc_invalid_request, "Invalid Request", nil)
+        )
+
+      %{"method" => method} ->
+        conn
+        |> put_resp_content_type("application/json")
+        |> send_resp(
+          :ok,
+          jsonrpc_error(
+            @jsonrpc_method_not_found,
+            "Method \"#{method}\" not found",
+            Map.get(conn.body_params, "id")
+          )
+        )
+
+      _ ->
         conn
         |> put_resp_content_type("application/json")
         |> send_resp(
@@ -34,22 +55,19 @@ defmodule ShoppingListWeb.McpController do
     end
   end
 
-  defp send_response(conn, {:ok, result}, request_id) do
+  defp respond(conn, {:ok, result}, request_id) do
     conn
     |> put_resp_content_type("application/json")
     |> send_resp(:ok, jsonrpc_success(result, request_id))
   end
 
-  defp send_response(conn, {:error, :method_not_found, method}, request_id) do
+  defp respond(conn, :ok, request_id) do
     conn
     |> put_resp_content_type("application/json")
-    |> send_resp(
-      :ok,
-      jsonrpc_error(@jsonrpc_method_not_found, "Method \"#{method}\" not found", request_id)
-    )
+    |> send_resp(:ok, jsonrpc_success(%{"status" => "ok"}, request_id))
   end
 
-  defp send_response(conn, {:error, :param_error, reason}, request_id) do
+  defp respond(conn, {:error, :param_error, reason}, request_id) do
     conn
     |> put_resp_content_type("application/json")
     |> send_resp(:ok, jsonrpc_error(@jsonrpc_invalid_params, reason, request_id))
@@ -137,35 +155,6 @@ defmodule ShoppingListWeb.McpController do
       "reorder_items",
       "clear_items"
     ]
-  end
-
-  defp fetch_body(conn) do
-    case Plug.Conn.read_body(conn) do
-      {:ok, body, _conn} when byte_size(body) > 0 ->
-        {:ok, body}
-
-      {:ok, "", _conn} ->
-        {:error, :invalid_request}
-
-      {:error, _reason} ->
-        {:error, :invalid_request}
-    end
-  end
-
-  defp parse_jsonrpc_request(body) do
-    case Jason.decode(body) do
-      {:ok, %{"jsonrpc" => "2.0", "method" => _method} = request} ->
-        {:ok, request}
-
-      {:ok, %{"jsonrpc" => _version}} ->
-        {:error, :invalid_request}
-
-      {:ok, _} ->
-        {:error, :invalid_request}
-
-      {:error, _} ->
-        {:error, :invalid_request}
-    end
   end
 
   defp fetch_item(id) do

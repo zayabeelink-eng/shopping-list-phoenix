@@ -62,7 +62,7 @@ defmodule ShoppingListWeb.ItemLive.Index do
           _ -> 1
         end
 
-      case List.create_item(%{name: name, quantity: quantity}) do
+      case List.create_item(%{"name" => name, "quantity" => quantity}) do
         {:ok, _item} ->
           {:noreply, assign(socket, :form, to_form(%{"name" => "", "quantity" => 1}))}
 

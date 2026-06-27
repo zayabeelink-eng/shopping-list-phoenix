@@ -39,6 +39,9 @@ npm-debug.log
 *.db
 *.db-*
 
+# Environment files
+.env
+
 # Lefthook local overrides
 /lefthook-local.yml
 

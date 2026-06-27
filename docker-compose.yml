@@ -1,6 +1,6 @@
 services:
   shopping_list_app:
-    image: ghcr.io/${GITHUB_USER_LOWER}/shopping_list:latest
+    image: ghcr.io/${GITHUB_USER_LOWER}/shopping-list-phoenix/shopping_list:latest
     container_name: shopping_list_prod
     restart: unless-stopped
     environment:

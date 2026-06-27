@@ -1,0 +1,24 @@
+version: '3.8'
+services:
+  shopping_list_app:
+    image: ghcr.io/${GITHUB_USER_LOWER}/shopping_list:latest
+    container_name: shopping_list_prod
+    restart: unless-stopped
+    environment:
+      - PHX_SERVER=true
+      - SECRET_KEY_BASE=${SECRET_KEY_BASE}
+      - DATABASE_PATH=/app/data/shopping_list_prod.db
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./data:/app/data
+  watchtower:
+    image: containrrr/watchtower
+    container_name: deployment_watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_POLL_INTERVAL=${WATCHTOWER_INTERVAL:-300}
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_TIMEOUT=30s

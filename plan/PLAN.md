@@ -362,11 +362,11 @@ Each phase must be completed and tested before progressing to the next. Detailed
 
 | Phase | File | Status |
 |-------|------|--------|
-| 1: Foundation & Environment Bootstrapping | [`phase-1-foundation.md`](phase-1-foundation.md) | In progress |
-| 2: Context, API & Real-Time Sync | [`phase-2-context-api.md`](phase-2-context-api.md) | Pending |
-| 3: LiveView UI & Real-Time Synchronization | [`phase-3-liveview-ui.md`](phase-3-liveview-ui.md) | Pending |
-| 4: MCP Server Integration | [`phase-4-mcp-server.md`](phase-4-mcp-server.md) | Pending |
-| 5: Production Hardening, QA & Handover | [`phase-5-production.md`](phase-5-production.md) | Pending |
+| 1: Foundation & Environment Bootstrapping | [`plan/phase-1-foundation.md`](phase-1-foundation.md) | In progress |
+| 2: Context, API & Real-Time Sync | [`plan/phase-2-context-api.md`](phase-2-context-api.md) | Pending |
+| 3: LiveView UI & Real-Time Synchronization | [`plan/phase-3-liveview-ui.md`](phase-3-liveview-ui.md) | Pending |
+| 4: MCP Server Integration | [`plan/phase-4-mcp-server.md`](phase-4-mcp-server.md) | Pending |
+| 5: Production Hardening, QA & Handover | [`plan/phase-5-production.md`](phase-5-production.md) | Pending |
 
 ---
 
@@ -376,11 +376,11 @@ Detailed test code and test plans are in each phase file:
 
 | Tests | Phase File |
 |-------|------------|
-| Schema unit tests (`item_test.exs`) | [`phase-1-foundation.md`](phase-1-foundation.md) |
-| Context unit tests (`list_test.exs`) | [`phase-2-context-api.md`](phase-2-context-api.md) |
-| REST API integration tests (`item_controller_test.exs`, `health_controller_test.exs`) | [`phase-2-context-api.md`](phase-2-context-api.md) |
-| LiveView integration tests (`item_live_test.exs`) | [`phase-3-liveview-ui.md`](phase-3-liveview-ui.md) |
-| MCP integration tests (`mcp_controller_test.exs`) | [`phase-4-mcp-server.md`](phase-4-mcp-server.md) |
+| Schema unit tests (`item_test.exs`) | [`plan/phase-1-foundation.md`](phase-1-foundation.md) |
+| Context unit tests (`list_test.exs`) | [`plan/phase-2-context-api.md`](phase-2-context-api.md) |
+| REST API integration tests (`item_controller_test.exs`, `health_controller_test.exs`) | [`plan/phase-2-context-api.md`](phase-2-context-api.md) |
+| LiveView integration tests (`item_live_test.exs`) | [`plan/phase-3-liveview-ui.md`](phase-3-liveview-ui.md) |
+| MCP integration tests (`mcp_controller_test.exs`) | [`plan/phase-4-mcp-server.md`](phase-4-mcp-server.md) |
 
 ### Coverage Requirements
 - All changeset validations must have unit tests

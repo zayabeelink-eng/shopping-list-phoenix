@@ -23,6 +23,7 @@ defmodule ShoppingListWeb.Router do
     put "/items/:id", ItemController, :update
     delete "/items/clear", ItemController, :clear
     delete "/items/:id", ItemController, :delete
+    post "/mcp", McpController, :call
   end
 
   scope "/", ShoppingListWeb do

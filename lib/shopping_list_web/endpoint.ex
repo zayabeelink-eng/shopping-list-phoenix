@@ -43,6 +43,8 @@ defmodule ShoppingListWeb.Endpoint do
   plug Plug.RequestId
   plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint]
 
+  plug ShoppingListWeb.Plugs.CacheBodyPlug
+
   plug Plug.Parsers,
     parsers: [:urlencoded, :multipart, :json],
     pass: ["*/*"],

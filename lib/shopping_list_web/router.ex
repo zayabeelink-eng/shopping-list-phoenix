@@ -23,7 +23,16 @@ defmodule ShoppingListWeb.Router do
     put "/items/:id", ItemController, :update
     delete "/items/clear", ItemController, :clear
     delete "/items/:id", ItemController, :delete
-    post "/mcp", McpController, :call
+  end
+
+  scope "/api" do
+    pipe_through :api
+
+    forward "/mcp", ExMCP.HttpPlug,
+      handler: ShoppingListWeb.MCPHandler,
+      server_info: %{name: "shopping-list-phoenix", version: "0.1.0"},
+      sse_enabled: false,
+      cors_enabled: false
   end
 
   scope "/", ShoppingListWeb do

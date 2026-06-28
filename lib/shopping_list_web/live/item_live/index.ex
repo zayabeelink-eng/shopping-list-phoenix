@@ -15,7 +15,6 @@ defmodule ShoppingListWeb.ItemLive.Index do
       socket
       |> assign(:form, to_form(%{"name" => "", "quantity" => 1}))
       |> assign(:show_completed, true)
-      |> assign(:form_key, 0)
       |> stream(:items, List.list_items(), reset: true)
 
     {:ok, socket}
@@ -47,6 +46,17 @@ defmodule ShoppingListWeb.ItemLive.Index do
   end
 
   @impl true
+  def handle_event("validate", %{"name" => name, "quantity" => quantity}, socket) do
+    quantity =
+      case Integer.parse(quantity) do
+        {int, _} when int > 0 -> int
+        _ -> 1
+      end
+
+    {:noreply,
+     assign(socket, :form, to_form(%{"name" => String.trim(name), "quantity" => quantity}))}
+  end
+
   def handle_event("save", %{"name" => name, "quantity" => quantity}, socket) do
     name = String.trim(name)
 
@@ -66,10 +76,7 @@ defmodule ShoppingListWeb.ItemLive.Index do
 
       case List.create_item(%{"name" => name, "quantity" => quantity}) do
         {:ok, _item} ->
-          {:noreply,
-           socket
-           |> assign(:form, to_form(%{"name" => "", "quantity" => 1}))
-           |> update(:form_key, &(&1 + 1))}
+          {:noreply, assign(socket, :form, to_form(%{"name" => "", "quantity" => 1}))}
 
         {:error, changeset} ->
           {:noreply, assign(socket, :form, to_form(changeset))}

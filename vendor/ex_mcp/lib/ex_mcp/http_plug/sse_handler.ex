@@ -108,10 +108,12 @@ defmodule ExMCP.HttpPlug.SSEHandler do
     # Extract Last-Event-ID if provided
     last_event_id = extract_last_event_id(conn)
 
-    # Send initial connection event
-    event_id = generate_event_id(0)
+    # Send initial endpoint event (MCP SSE transport standard)
+    # Must be raw text, not JSON-encoded: "data: /path?session_id=X"
+    messages_url = "/api/mcp/messages/?session_id=#{session_id}"
+    endpoint_message = "id: #{generate_event_id(0)}\nevent: endpoint\ndata: #{messages_url}\n\n"
 
-    case send_sse_event(conn, "connected", %{session_id: session_id}, event_id) do
+    case do_chunk(conn, endpoint_message) do
       {:ok, conn} ->
         # Start heartbeat timer
         heartbeat_ref = Process.send_after(self(), :heartbeat, @heartbeat_interval)

@@ -7,6 +7,7 @@ defmodule ShoppingList.List do
   import Ecto.Query, warn: false
 
   alias ShoppingList.List.Item
+  alias ShoppingList.PurchaseEvent
   alias ShoppingList.Repo
 
   @topic "shopping_list_mutations"
@@ -66,19 +67,48 @@ defmodule ShoppingList.List do
   end
 
   @doc """
-  Updates an item with valid attributes.
+  Updates an item with valid attributes. Creates a purchase event when
+  is_completed transitions from false to true.
   """
   def update_item(%Item{} = item, attrs) do
-    item
-    |> Item.changeset(attrs)
-    |> Repo.update()
+    old_completed = item.is_completed
+
+    Repo.transaction(fn ->
+      item
+      |> Item.changeset(attrs)
+      |> Repo.update()
+      |> case do
+        {:ok, updated} when not old_completed and updated.is_completed ->
+          %PurchaseEvent{
+            item_name: updated.name,
+            quantity: updated.quantity,
+            purchased_at: NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
+          }
+          |> PurchaseEvent.changeset(%{})
+          |> Repo.insert!()
+
+          updated
+
+        {:ok, updated} ->
+          updated
+
+        {:error, changeset} ->
+          Repo.rollback({:error, changeset})
+      end
+    end)
     |> case do
       {:ok, item} ->
         broadcast(:item_updated, item)
         {:ok, item}
 
-      {:error, changeset} ->
+      {:error, {:error, changeset}} ->
         {:error, changeset}
+
+      {:error, {:error, changeset}, _rollback, _} ->
+        {:error, changeset}
+
+      {:error, _, _, _} = err ->
+        err
     end
   end
 

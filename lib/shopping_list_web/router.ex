@@ -26,8 +26,6 @@ defmodule ShoppingListWeb.Router do
   end
 
   scope "/api" do
-    pipe_through :api
-
     forward "/mcp", ExMCP.HttpPlug,
       handler: ShoppingListWeb.MCPHandler,
       server_info: %{name: "shopping-list-phoenix", version: "0.1.0"},

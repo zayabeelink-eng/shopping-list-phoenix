@@ -14,7 +14,7 @@ config :shopping_list,
 # Configure the endpoint
 config :shopping_list, ShoppingListWeb.Endpoint,
   url: [host: "localhost"],
-  adapter: Bandit.PhoenixAdapter,
+  adapter: Phoenix.Endpoint.Cowboy2Adapter,
   render_errors: [
     formats: [html: ShoppingListWeb.ErrorHTML, json: ShoppingListWeb.ErrorJSON],
     layout: false

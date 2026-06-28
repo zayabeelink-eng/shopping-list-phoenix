@@ -18,6 +18,7 @@ services:
     image: containrrr/watchtower
     container_name: deployment_watchtower
     restart: unless-stopped
+    command: shopping_list_prod
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:

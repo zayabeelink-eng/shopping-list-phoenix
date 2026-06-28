@@ -3,6 +3,7 @@ defmodule ShoppingList.ListTest do
 
   alias ShoppingList.List
   alias ShoppingList.List.Item
+  alias ShoppingList.PurchaseEvent
   alias ShoppingList.Repo
 
   describe "create_item/1" do
@@ -40,6 +41,25 @@ defmodule ShoppingList.ListTest do
       {:ok, updated} = List.update_item(item, %{"name" => "Almond Milk", "quantity" => 3})
       assert updated.name == "Almond milk"
       assert updated.quantity == 3
+    end
+
+    test "creates purchase event on completion" do
+      {:ok, item} = List.create_item(%{"name" => "Rice", "quantity" => 3})
+      assert Repo.all(PurchaseEvent) == []
+
+      {:ok, updated} = List.update_item(item, %{"is_completed" => true})
+      assert updated.is_completed == true
+
+      events = Repo.all(PurchaseEvent)
+      assert length(events) == 1
+      assert hd(events).item_name == "Rice"
+      assert hd(events).quantity == 3
+    end
+
+    test "does not create event on non-completion changes" do
+      {:ok, item} = List.create_item(%{"name" => "Sugar"})
+      List.update_item(item, %{"quantity" => 5})
+      assert Repo.all(PurchaseEvent) == []
     end
   end
 

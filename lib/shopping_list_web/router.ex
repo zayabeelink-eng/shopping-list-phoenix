@@ -31,7 +31,7 @@ defmodule ShoppingListWeb.Router do
     forward "/mcp", ExMCP.HttpPlug,
       handler: ShoppingListWeb.MCPHandler,
       server_info: %{name: "shopping-list-phoenix", version: "0.1.0"},
-      sse_enabled: false,
+      sse_enabled: true,
       cors_enabled: false
   end
 

@@ -68,7 +68,7 @@ defmodule ShoppingList.MixProject do
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:sobelow, "~> 0.13", only: [:dev, :test], runtime: false},
-      {:ex_mcp, "~> 0.12.0"},
+      {:ex_mcp, path: "vendor/ex_mcp"},
       {:plug_cowboy, "~> 2.7"}
     ]
   end

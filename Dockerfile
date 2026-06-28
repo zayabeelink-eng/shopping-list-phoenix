@@ -8,6 +8,7 @@ RUN curl -fsSL -o /usr/local/bin/rebar3 "https://github.com/erlang/rebar3/releas
 ENV MIX_REBAR3=/usr/local/bin/rebar3
 ENV MIX_ENV="prod"
 COPY mix.exs mix.lock ./
+COPY vendor vendor
 RUN mix deps.get
 RUN mix deps.compile
 COPY config config

@@ -26,12 +26,13 @@
     <.form for={@form} id="add-item-form" phx-change="validate" phx-submit="save">
       <div class="flex gap-2">
         <div class="flex-1">
-          <.input field={@form[:name]} type="text" placeholder="Add item..." />
+          <.input field={@form[:name]} type="text" placeholder="Add item..." enterkeyhint="done" />
         </div>
         <div class="w-24">
           <.input field={@form[:quantity]} type="number" min="1" />
         </div>
         <.button
+          type="submit"
           phx-disable-with="Adding..."
           class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg px-4 py-2 transition-colors"
         >

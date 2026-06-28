@@ -17,6 +17,71 @@ defmodule ShoppingListWeb.MCPHandler do
   @impl GenServer
   def terminate(_reason, _state), do: :ok
 
+  @dialyzer {:no_match, handle_call: 3}
+
+  defp __widen_type__(result), do: result
+
+  @impl GenServer
+  def handle_call({:initialize, params}, _from, state) do
+    case __widen_type__(handle_initialize(params, state)) do
+      {:ok, result, new_state} -> {:reply, {:ok, result}, new_state}
+      {:error, reason, new_state} -> {:reply, {:error, reason}, new_state}
+    end
+  end
+
+  @impl GenServer
+  def handle_call({:list_tools, cursor}, _from, state) do
+    case __widen_type__(handle_list_tools(cursor, state)) do
+      {:ok, tools, next_cursor, new_state} ->
+        {:reply, {:ok, tools, next_cursor, new_state}, new_state}
+    end
+  end
+
+  @impl GenServer
+  def handle_call({:call_tool, name, args}, _from, state) do
+    case __widen_type__(handle_call_tool(name, args, state)) do
+      {:ok, result, new_state} -> {:reply, {:ok, result}, new_state}
+      {:error, reason, new_state} -> {:reply, {:error, reason}, new_state}
+    end
+  end
+
+  @impl GenServer
+  def handle_call({:list_resources, cursor}, _from, state) do
+    case __widen_type__(handle_list_resources(cursor, state)) do
+      {:ok, resources, next_cursor, new_state} ->
+        {:reply, {:ok, resources, next_cursor, new_state}, new_state}
+    end
+  end
+
+  @impl GenServer
+  def handle_call({:read_resource, uri}, _from, state) do
+    case __widen_type__(handle_read_resource(uri, state)) do
+      {:ok, content, new_state} -> {:reply, {:ok, content}, new_state}
+      {:error, reason, new_state} -> {:reply, {:error, reason}, new_state}
+    end
+  end
+
+  @impl GenServer
+  def handle_call({:list_prompts, cursor}, _from, state) do
+    case __widen_type__(handle_list_prompts(cursor, state)) do
+      {:ok, prompts, next_cursor, new_state} ->
+        {:reply, {:ok, prompts, next_cursor, new_state}, new_state}
+    end
+  end
+
+  @impl GenServer
+  def handle_call({:get_prompt, name, args}, _from, state) do
+    case __widen_type__(handle_get_prompt(name, args, state)) do
+      {:ok, result, new_state} -> {:reply, {:ok, result}, new_state}
+      {:error, reason, new_state} -> {:reply, {:error, reason}, new_state}
+    end
+  end
+
+  @impl GenServer
+  def handle_call(_msg, _from, state) do
+    {:reply, {:error, "Unknown message"}, state}
+  end
+
   @impl true
   def handle_initialize(_params, state) do
     {:ok,

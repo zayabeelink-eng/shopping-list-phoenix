@@ -95,11 +95,6 @@ defmodule ShoppingListWeb.ItemLive.Index do
     {:noreply, socket}
   end
 
-  def handle_event("clear", _params, socket) do
-    _ = List.clear_items()
-    {:noreply, socket}
-  end
-
   def handle_event("update-quantity", %{"id" => id, "quantity" => quantity}, socket) do
     item = List.get_item!(id)
 

@@ -222,7 +222,8 @@ defmodule ShoppingListWeb.MCPHandlerTest do
         MCPHandler.handle_call_tool(
           "reorder_items",
           %{
-            "item_ids" => [item1.id, item3.id, item2.id]
+            "item_ids" => [item1.id, item3.id, item2.id],
+            "confirmed" => true
           },
           state
         )
@@ -236,13 +237,29 @@ defmodule ShoppingListWeb.MCPHandlerTest do
       assert Enum.at(items, 2).id == item2.id
     end
 
-    test "returns error when item_ids is missing" do
+    test "returns error when confirmed is missing" do
       state = %{}
 
       {:ok, %{content: [%{type: "text", text: msg}], isError: true}, _state} =
         MCPHandler.handle_call_tool("reorder_items", %{}, state)
 
-      assert msg == "item_ids must be a list"
+      assert msg == ~s(Confirmation required. Set "confirmed" to true to proceed with reorder.)
+    end
+
+    test "returns error when confirmed is false", %{item1: item1, item2: item2, item3: item3} do
+      state = %{}
+
+      {:ok, %{content: [%{type: "text", text: msg}], isError: true}, _state} =
+        MCPHandler.handle_call_tool(
+          "reorder_items",
+          %{
+            "item_ids" => [item1.id, item3.id, item2.id],
+            "confirmed" => false
+          },
+          state
+        )
+
+      assert msg == ~s(Confirmation required. Set "confirmed" to true to proceed with reorder.)
     end
 
     test "returns error for invalid item IDs" do
@@ -252,7 +269,8 @@ defmodule ShoppingListWeb.MCPHandlerTest do
         MCPHandler.handle_call_tool(
           "reorder_items",
           %{
-            "item_ids" => ["invalid-id"]
+            "item_ids" => ["invalid-id"],
+            "confirmed" => true
           },
           state
         )

@@ -153,9 +153,13 @@ defmodule ShoppingListWeb.MCPHandler do
               type: "array",
               items: %{type: "string"},
               description: "Ordered list of item IDs (first is highest priority)"
+            },
+            confirmed: %{
+              type: "boolean",
+              description: "Must be set to true to confirm the reorder operation"
             }
           },
-          required: ["item_ids"]
+          required: ["item_ids", "confirmed"]
         }
       }
     ]
@@ -294,24 +298,33 @@ defmodule ShoppingListWeb.MCPHandler do
 
   defp handle_reorder_items(arguments, state) do
     item_ids = Map.get(arguments, "item_ids")
+    confirmed = Map.get(arguments, "confirmed", false)
 
-    if is_nil(item_ids) or not is_list(item_ids) do
+    if not confirmed do
       {:ok,
        %{
-         content: [%{type: "text", text: "item_ids must be a list"}],
+         content: [%{type: "text", text: ~s(Confirmation required. Set "confirmed" to true to proceed with reorder.)}],
          isError: true
        }, state}
     else
-      case List.reorder_item_ids(item_ids) do
-        :ok ->
-          {:ok, [%{type: "text", text: Jason.encode!(%{"status" => "ok"})}], state}
+      if is_nil(item_ids) or not is_list(item_ids) do
+        {:ok,
+         %{
+           content: [%{type: "text", text: "item_ids must be a list"}],
+           isError: true
+         }, state}
+      else
+        case List.reorder_item_ids(item_ids) do
+          :ok ->
+            {:ok, [%{type: "text", text: Jason.encode!(%{"status" => "ok"})}], state}
 
-        :error ->
-          {:ok,
-           %{
-             content: [%{type: "text", text: "Invalid item IDs"}],
-             isError: true
-           }, state}
+          :error ->
+            {:ok,
+             %{
+               content: [%{type: "text", text: "Invalid item IDs"}],
+               isError: true
+             }, state}
+        end
       end
     end
   end

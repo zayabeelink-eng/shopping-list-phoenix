@@ -24,11 +24,11 @@ defmodule ShoppingListWeb.MCPHandlerTest do
   end
 
   describe "handle_list_tools/2" do
-    test "returns all 6 tools" do
+    test "returns all 5 tools" do
       state = %{}
       {:ok, tools, _next_cursor, _state} = MCPHandler.handle_list_tools(nil, state)
 
-      assert length(tools) == 6
+      assert length(tools) == 5
 
       names = Enum.map(tools, fn tool -> tool.name end)
       assert "list_items" in names
@@ -36,7 +36,6 @@ defmodule ShoppingListWeb.MCPHandlerTest do
       assert "update_item" in names
       assert "remove_item" in names
       assert "reorder_items" in names
-      assert "clear_items" in names
     end
   end
 
@@ -259,25 +258,6 @@ defmodule ShoppingListWeb.MCPHandlerTest do
         )
 
       assert msg == "Invalid item IDs"
-    end
-  end
-
-  describe "handle_call_tool - clear_items" do
-    setup do
-      List.create_item(%{"name" => "Milk"})
-      List.create_item(%{"name" => "Bread"})
-      :ok
-    end
-
-    test "clears all items" do
-      state = %{}
-
-      {:ok, [%{type: "text", text: json}], _state} =
-        MCPHandler.handle_call_tool("clear_items", %{}, state)
-
-      result = Jason.decode!(json)
-      assert result["status"] == "ok"
-      assert List.list_items() == []
     end
   end
 

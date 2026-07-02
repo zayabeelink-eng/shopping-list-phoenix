@@ -157,11 +157,6 @@ defmodule ShoppingListWeb.MCPHandler do
           },
           required: ["item_ids"]
         }
-      },
-      %{
-        name: "clear_items",
-        description: "Clear all items from the shopping list",
-        inputSchema: %{type: "object", properties: %{}, required: []}
       }
     ]
 
@@ -176,7 +171,6 @@ defmodule ShoppingListWeb.MCPHandler do
       "update_item" -> handle_update_item(arguments, state)
       "remove_item" -> handle_remove_item(arguments, state)
       "reorder_items" -> handle_reorder_items(arguments, state)
-      "clear_items" -> handle_clear_items(arguments, state)
       _ -> {:error, "Tool not found", state}
     end
   end
@@ -320,11 +314,6 @@ defmodule ShoppingListWeb.MCPHandler do
            }, state}
       end
     end
-  end
-
-  defp handle_clear_items(_arguments, state) do
-    :ok = List.clear_items()
-    {:ok, [%{type: "text", text: Jason.encode!(%{"status" => "ok"})}], state}
   end
 
   defp fetch_item(id) do

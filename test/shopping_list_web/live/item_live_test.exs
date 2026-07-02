@@ -31,6 +31,10 @@ defmodule ShoppingListWeb.ItemLiveTest do
       |> render_submit()
 
       view
+      |> element("[phx-click=toggle-completed-filter]")
+      |> render_click()
+
+      view
       |> element("input[type=checkbox]")
       |> render_click()
 
@@ -43,6 +47,10 @@ defmodule ShoppingListWeb.ItemLiveTest do
       view
       |> form("#add-item-form", %{"name" => "pasta", "quantity" => "2"})
       |> render_submit()
+
+      view
+      |> element("[phx-click=toggle-completed-filter]")
+      |> render_click()
 
       view
       |> element("input[type=checkbox]")
@@ -98,6 +106,10 @@ defmodule ShoppingListWeb.ItemLiveTest do
       |> render_submit()
 
       view
+      |> element("[phx-click=toggle-completed-filter]")
+      |> render_click()
+
+      view
       |> element("input[type=checkbox]")
       |> render_click()
 
@@ -116,6 +128,10 @@ defmodule ShoppingListWeb.ItemLiveTest do
       view
       |> form("#add-item-form", %{"name" => "pasta", "quantity" => "1"})
       |> render_submit()
+
+      view
+      |> element("[phx-click=toggle-completed-filter]")
+      |> render_click()
 
       view
       |> element("input[type=checkbox]")

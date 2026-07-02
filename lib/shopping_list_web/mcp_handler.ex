@@ -300,7 +300,9 @@ defmodule ShoppingListWeb.MCPHandler do
     item_ids = Map.get(arguments, "item_ids")
     confirmed = Map.get(arguments, "confirmed", false)
 
-    if not confirmed do
+    if confirmed do
+      validate_and_reorder(item_ids, state)
+    else
       {:ok,
        %{
          content: [
@@ -311,25 +313,27 @@ defmodule ShoppingListWeb.MCPHandler do
          ],
          isError: true
        }, state}
-    else
-      if is_nil(item_ids) or not is_list(item_ids) do
-        {:ok,
-         %{
-           content: [%{type: "text", text: "item_ids must be a list"}],
-           isError: true
-         }, state}
-      else
-        case List.reorder_item_ids(item_ids) do
-          :ok ->
-            {:ok, [%{type: "text", text: Jason.encode!(%{"status" => "ok"})}], state}
+    end
+  end
 
-          :error ->
-            {:ok,
-             %{
-               content: [%{type: "text", text: "Invalid item IDs"}],
-               isError: true
-             }, state}
-        end
+  defp validate_and_reorder(item_ids, state) do
+    if is_nil(item_ids) or not is_list(item_ids) do
+      {:ok,
+       %{
+         content: [%{type: "text", text: "item_ids must be a list"}],
+         isError: true
+       }, state}
+    else
+      case List.reorder_item_ids(item_ids) do
+        :ok ->
+          {:ok, [%{type: "text", text: Jason.encode!(%{"status" => "ok"})}], state}
+
+        :error ->
+          {:ok,
+           %{
+             content: [%{type: "text", text: "Invalid item IDs"}],
+             isError: true
+           }, state}
       end
     end
   end

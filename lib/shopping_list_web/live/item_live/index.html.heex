@@ -41,7 +41,7 @@
       </div>
     </.form>
 
-    <div id="items" phx-update="stream" class="space-y-2 mt-6">
+    <div id="items" phx-update="stream" phx-hook=".DragReorder" class="space-y-2 mt-6">
       <div id="empty-state" class="hidden only:block text-center py-12">
         <.icon
           name="hero-shopping-cart"
@@ -53,8 +53,14 @@
       <div
         :for={{id, item} <- @streams.items}
         id={id}
-        class="flex items-center gap-3 p-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow"
+        draggable="true"
+        data-item-id={item.id}
+        class="flex items-center gap-2 p-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing"
       >
+        <div class="text-gray-400 dark:text-gray-500 shrink-0">
+          <.icon name="hero-bars-4" class="w-5 h-5" />
+        </div>
+
         <input
           type="checkbox"
           checked={item.is_completed}
@@ -110,5 +116,74 @@
         </button>
       </div>
     </div>
+
+    <script :type={Phoenix.LiveView.ColocatedHook} name=".DragReorder">
+      export default {
+        mounted() {
+          let dragSrcId = null
+
+          this.el.addEventListener("dragstart", e => {
+            const item = e.target.closest("[draggable]")
+            if (!item) return
+            dragSrcId = item.dataset.itemId
+            e.dataTransfer.effectAllowed = "move"
+            e.dataTransfer.setData("text/plain", dragSrcId)
+            item.classList.add("opacity-50")
+          })
+
+          this.el.addEventListener("dragend", e => {
+            const item = e.target.closest("[draggable]")
+            if (item) item.classList.remove("opacity-50")
+            this.el.querySelectorAll("[draggable]").forEach(el => {
+              el.classList.remove("ring-2", "ring-emerald-400")
+            })
+            dragSrcId = null
+          })
+
+          this.el.addEventListener("dragover", e => {
+            e.preventDefault()
+            const item = e.target.closest("[draggable]")
+            if (!item || item.dataset.itemId === dragSrcId) return
+            e.dataTransfer.dropEffect = "move"
+          })
+
+          this.el.addEventListener("dragenter", e => {
+            const item = e.target.closest("[draggable]")
+            if (!item || item.dataset.itemId === dragSrcId) return
+            item.classList.add("ring-2", "ring-emerald-400")
+          })
+
+          this.el.addEventListener("dragleave", e => {
+            const item = e.target.closest("[draggable]")
+            if (!item || item.contains(e.relatedTarget)) return
+            item.classList.remove("ring-2", "ring-emerald-400")
+          })
+
+          this.el.addEventListener("drop", e => {
+            e.preventDefault()
+            const target = e.target.closest("[draggable]")
+            if (!target || !dragSrcId || target.dataset.itemId === dragSrcId) return
+
+            this.el.querySelectorAll("[draggable]").forEach(el => {
+              el.classList.remove("ring-2", "ring-emerald-400")
+            })
+
+            const items = [...this.el.querySelectorAll("[draggable]")]
+            const ids = items.map(el => el.dataset.itemId)
+            const srcIdx = ids.indexOf(dragSrcId)
+            const tgtIdx = ids.indexOf(target.dataset.itemId)
+
+            if (srcIdx === -1 || tgtIdx === -1) return
+
+            const [movedId] = ids.splice(srcIdx, 1)
+            const insertIdx = srcIdx < tgtIdx ? tgtIdx - 1 : tgtIdx
+            ids.splice(insertIdx, 0, movedId)
+
+            this.pushEvent("reorder", { ids })
+            dragSrcId = null
+          })
+        }
+      }
+    </script>
   </div>
 </Layouts.app>

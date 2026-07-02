@@ -303,7 +303,12 @@ defmodule ShoppingListWeb.MCPHandler do
     if not confirmed do
       {:ok,
        %{
-         content: [%{type: "text", text: ~s(Confirmation required. Set "confirmed" to true to proceed with reorder.)}],
+         content: [
+           %{
+             type: "text",
+             text: ~s(Confirmation required. Set "confirmed" to true to proceed with reorder.)
+           }
+         ],
          isError: true
        }, state}
     else

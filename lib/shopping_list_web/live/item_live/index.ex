@@ -14,7 +14,7 @@ defmodule ShoppingListWeb.ItemLive.Index do
     socket =
       socket
       |> assign(:form, to_form(%{"name" => "", "quantity" => 1}))
-      |> assign(:show_completed, true)
+      |> assign(:show_completed, false)
       |> stream(:items, List.list_items(), reset: true)
 
     {:ok, socket}
